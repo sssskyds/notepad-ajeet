@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NovaPad — Browser Notepad by Ajeet</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/eclipse.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldgutter.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/dialog/dialog.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --surface: #27273a;
+      --surface2: #2e2e45;
+      --border: #3d3d5c;
+      --text: #cdd6f4;
+      --muted: #7f849c;
+      --accent: #89b4fa;
+      --accent2: #cba6f7;
+      --green: #a6e3a1;
+      --red: #f38ba8;
+      --yellow: #f9e2af;
+      --tab-active: #313244;
+      --tab-bg: #1e1e2e;
+      --toolbar-bg: #181825;
+      --statusbar-bg: #11111b;
+      --radius: 6px;
+      --font-ui: 'Inter', sans-serif;
+      --font-code: 'JetBrains Mono', 'Courier New', monospace;
+    }
+    [data-theme="light"] {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --surface2: #eeeeee;
+      --border: #d0d0d0;
+      --text: #383a42;
+      --muted: #9e9e9e;
+      --accent: #2676d9;
+      --accent2: #8b4bcb;
+      --green: #2d9e50;
+      --red: #d9534f;
+      --yellow: #c9920a;
+      --tab-active: #ffffff;
+      --tab-bg: #e8e8e8;
+      --toolbar-bg: #dcdcdc;
+      --statusbar-bg: #c8c8c8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+    }
+
+    /* ── TOOLBAR ── */
+    #toolbar {
+      background: var(--toolbar-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      min-height: 36px;
+      flex-shrink: 0;
+    }
+    .tb-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 3px 9px;
+      font-size: 12px;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .tb-btn:hover { background: var(--surface); border-color: var(--accent); color: var(--accent); }
+    .tb-btn.danger:hover { border-color: var(--red); color: var(--red); }
+    .tb-btn.success { border-color: var(--green); color: var(--green); }
+    .tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+    select.tb-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 3px 6px;
+      font-size: 12px;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      outline: none;
+    }
+    select.tb-select:hover { border-color: var(--accent); }
+    .tb-logo {
+      font-family: var(--font-code);
+      font-weight: 700;
+      font-size: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-right: 6px;
+      letter-spacing: -0.5px;
+      flex-shrink: 0;
+    }
+    .autosave-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .autosave-pill.saving { color: var(--yellow); border-color: var(--yellow); }
+    .autosave-pill.saved { color: var(--green); border-color: var(--green); }
+    .spin { display: inline-block; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── TABS ── */
+    #tab-bar {
+      background: var(--tab-bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      border-right: 1px solid var(--border);
+      cursor: pointer;
+      white-space: nowrap;
+      color: var(--muted);
+      background: var(--tab-bg);
+      border-top: 2px solid transparent;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .tab:hover { color: var(--text); background: var(--surface2); }
+    .tab.active {
+      color: var(--text);
+      background: var(--tab-active);
+      border-top-color: var(--accent);
+    }
+    .tab .dirty { color: var(--yellow); font-size: 14px; line-height: 1; }
+    .tab .close-tab {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1;
+      border-radius: 3px;
+      padding: 0 2px;
+      transition: color 0.1s;
+    }
+    .tab .close-tab:hover { color: var(--red); }
+    #new-tab-btn {
+      padding: 5px 10px;
+      font-size: 16px;
+      color: var(--muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    #new-tab-btn:hover { color: var(--accent); }
+
+    /* ── FIND BAR ── */
+    #find-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 4px 8px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    #find-bar.open { display: flex; }
+    #find-bar input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 2px 7px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      width: 180px;
+      outline: none;
+    }
+    #find-bar input:focus { border-color: var(--accent); }
+    #find-count { font-size: 11px; color: var(--muted); min-width: 60px; }
+    #find-bar .fb-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 2px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    #find-bar .fb-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #find-bar .close-find {
+      margin-left: auto;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      background: none;
+      border: none;
+      color: var(--muted);
+    }
+    #find-bar .close-find:hover { color: var(--red); }
+
+    /* ── EDITOR ── */
+    #editor-container {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .CodeMirror {
+      height: 100% !important;
+      font-family: var(--font-code) !important;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .CodeMirror-scroll { height: 100% !important; }
+
+    /* ── MINIMAP ── */
+    #minimap-container {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 80px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      overflow: hidden;
+      display: none;
+      opacity: 0.6;
+    }
+    #minimap-container.visible { display: block; }
+    #minimap-canvas { width: 80px; cursor: pointer; }
+
+    /* ── STATUSBAR ── */
+    #statusbar {
+      background: var(--statusbar-bg);
+      border-top: 1px solid var(--border);
+      padding: 2px 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      font-family: var(--font-code);
+      color: var(--muted);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .sb-item { display: flex; align-items: center; gap: 3px; }
+    .sb-badge {
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 4px;
+      padding: 0 5px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .sb-right { margin-left: auto; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 18px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-family: var(--font-ui);
+      opacity: 0;
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── MODAL ── */
+    #modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      width: 320px;
+      max-width: 90vw;
+    }
+    #modal h3 { font-size: 14px; margin-bottom: 12px; color: var(--text); }
+    #modal input, #modal select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      font-size: 13px;
+      font-family: var(--font-code);
+      margin-bottom: 10px;
+      outline: none;
+    }
+    #modal input:focus { border-color: var(--accent); }
+    #modal .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    #modal .modal-btns button {
+      padding: 5px 14px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    #modal .btn-confirm { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+    #modal .btn-cancel { background: var(--surface2); color: var(--text); }
+  </style>
+</head>
+<body data-theme="dark">
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <span class="tb-logo">⚡ NovaPad</span>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="newTab()" title="Ctrl+T">＋ New</button>
+  <button class="tb-btn" onclick="openFile()" title="Ctrl+O">📂 Open</button>
+  <button class="tb-btn" onclick="saveFile()" title="Ctrl+S">💾 Save</button>
+  <button class="tb-btn" onclick="saveAs()" title="Ctrl+Shift+S">Save As</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="findOpen()" title="Ctrl+F">🔍 Find</button>
+  <button class="tb-btn" onclick="duplicateLine()" title="Ctrl+D">⊕ Dup</button>
+  <button class="tb-btn" onclick="toggleComment()" title="Ctrl+/">// Comment</button>
+  <button class="tb-btn" onclick="formatCode()">⇥ Format</button>
+  <button class="tb-btn" onclick="sortLines()">↕ Sort</button>
+  <button class="tb-btn" onclick="copyAll()">⎘ Copy All</button>
+  <button class="tb-btn danger" onclick="clearContent()">🗑 Clear</button>
+  <div class="tb-sep"></div>
+  <select class="tb-select" id="langSel" onchange="changeLang()"><option value="text/plain">Plain Text</option><option value="text/x-csrc" selected>C</option><option value="text/x-c++src">C++</option><option value="text/x-java">Java</option><option value="text/x-python">Python</option><option value="text/javascript">JavaScript</option><option value="text/html">HTML</option><option value="text/css">CSS</option><option value="text/x-sh">Shell</option><option value="application/json">JSON</option><option value="text/x-batch">Batch</option><option value="text/x-markdown">Markdown</option></select>
+  <select class="tb-select" id="fontSel" onchange="changeFont()"><option value="12">12px</option><option value="13">13px</option><option value="14" selected>14px</option><option value="16">16px</option><option value="18">18px</option><option value="20">20px</option></select>
+  <select class="tb-select" id="themeSel" onchange="changeTheme()"><option value="dracula">🌙 Dracula</option><option value="eclipse">☀ Eclipse</option><option value="default">◻ Classic</option></select>
+  <button class="tb-btn" onclick="toggleWrap()" id="wrapBtn">↵ Wrap: Off</button>
+  <button class="tb-btn" onclick="toggleMinimap()" id="mmBtn">▦ Map: Off</button>
+  <div class="tb-sep"></div>
+  <div class="autosave-pill saved" id="asPill" onclick="configAutosave()" title="Auto-save settings">
+    <span id="asIcon">✓</span>
+    <span id="asLabel">Auto-Save</span>
+  </div>
+  <button class="tb-btn" onclick="toggleTheme()" id="themeToggle" style="margin-left:auto">🌙</button>
+</div>
+
+<!-- TABS -->
+<div id="tab-bar">
+  <button id="new-tab-btn" onclick="newTab()" title="New tab (Ctrl+T)">＋</button>
+</div>
+
+<!-- FIND BAR -->
+<div id="find-bar">
+  <input id="findInput" placeholder="Find…" oninput="doFind()" onkeydown="findKey(event)" />
+  <span id="find-count">0 matches</span>
+  <button class="fb-btn" onclick="findPrev()">▲</button>
+  <button class="fb-btn" onclick="findNext()">▼</button>
+  <input id="replaceInput" placeholder="Replace…" style="margin-left:6px" />
+  <button class="fb-btn" onclick="doReplace()">Replace</button>
+  <button class="fb-btn" onclick="doReplaceAll()">All</button>
+  <button class="close-find" onclick="findClose()">✕</button>
+</div>
+
+<!-- EDITOR -->
+<div id="editor-container">
+  <textarea id="editor"></textarea>
+  <div id="minimap-container"><canvas id="minimap-canvas"></canvas></div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <div class="sb-item"><span class="sb-badge" id="sbLang">C</span></div>
+  <div class="sb-item">Ln <span id="sbLn">1</span>, Col <span id="sbCol">1</span></div>
+  <div class="sb-item">Sel: <span id="sbSel">0</span></div>
+  <div class="sb-item">Words: <span id="sbWords">0</span></div>
+  <div class="sb-item">Chars: <span id="sbChars">0</span></div>
+  <div class="sb-item">Lines: <span id="sbLines">1</span></div>
+  <div class="sb-item sb-right">💾 <span id="sbSaveTime">Not saved</span></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SAVE AS MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Save As</h3>
+    <input id="modal-filename" placeholder="filename" />
+    <select id="modal-ext">
+      <option value=".c">.c — C</option>
+      <option value=".cpp">.cpp — C++</option>
+      <option value=".java">.java — Java</option>
+      <option value=".py">.py — Python</option>
+      <option value=".js">.js — JavaScript</option>
+      <option value=".html">.html — HTML</option>
+      <option value=".css">.css — CSS</option>
+      <option value=".sh">.sh — Shell</option>
+      <option value=".json">.json — JSON</option>
+      <option value=".bat">.bat — Batch</option>
+      <option value=".md">.md — Markdown</option>
+      <option value=".txt">.txt — Plain Text</option>
+      <option value=".ajs">.ajs — NovaPad Session</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmSaveAs()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CodeMirror -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/shell/shell.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/indent-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/search/search.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/comment/comment.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let tabs = [];
+let activeTabId = null;
+let tabCounter = 0;
+let editor = null;
+let wordWrap = false;
+let minimapOn = false;
+let darkMode = true;
+let asTimer = null;
+let asSaveTimer = null;
+let ajsFileHandle = null;
+let findMatches = [];
+let findIdx = 0;
+let dbReady = false;
+let idb = null;
+
+// ═══════════════════════════════════════════════
+//  INDEXEDDB — persist file handle
+// ═══════════════════════════════════════════════
+function openIDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('novapad', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = e => rej(e);
+  });
+}
+async function idbGet(key) {
+  if (!idb) return null;
+  return new Promise(res => {
+    const tx = idb.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => res(req.result ?? null);
+    req.onerror = () => res(null);
+  });
+}
+async function idbSet(key, val) {
+  if (!idb) return;
+  return new Promise(res => {
+    const tx = idb.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(val, key);
+    tx.oncomplete = res;
+    tx.onerror = res;
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  try { idb = await openIDB(); } catch(e) { console.warn('IDB unavailable', e); }
+
+  editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+    lineNumbers: true,
+    mode: 'text/x-csrc',
+    theme: 'dracula',
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    styleActiveLine: true,
+    foldGutter: true,
+    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+    extraKeys: {
+      'Ctrl-S': () => saveFile(),
+      'Ctrl-Shift-S': () => saveAs(),
+      'Ctrl-O': () => openFile(),
+      'Ctrl-T': () => newTab(),
+      'Ctrl-W': () => closeTab(activeTabId),
+      'Ctrl-F': () => findOpen(),
+      'Ctrl-D': () => duplicateLine(),
+      'Ctrl-/': () => toggleComment(),
+      'Tab': 'indentMore',
+      'Shift-Tab': 'indentLess',
+      'Enter': cm => cm.execCommand('newlineAndIndent'),
+      'Ctrl-Space': 'autocomplete',
+    }
+  });
+
+  editor.on('change', () => { scheduleAutoSave(); updateStatus(); markDirty(); });
+  editor.on('cursorActivity', updateStatus);
+
+  // Restore session
+  const session = JSON.parse(localStorage.getItem('novapad_session') || 'null');
+  if (session && session.tabs && session.tabs.length > 0) {
+    session.tabs.forEach(t => createTab(t.name, t.content, t.mode, t.cursor));
+    const target = tabs.find(t => t.id === session.activeTabId) || tabs[0];
+    if (target) switchTab(target.id);
+    // Apply config
+    if (session.cfg) {
+      if (session.cfg.dark === false) { darkMode = true; toggleTheme(); }
+      if (session.cfg.fontSize) { document.getElementById('fontSel').value = session.cfg.fontSize; changeFont(); }
+      if (session.cfg.theme) { document.getElementById('themeSel').value = session.cfg.theme; changeTheme(); }
+      if (session.cfg.wrap) { toggleWrap(); }
+    }
+    const t = new Date();
+    showToast(`Session restored ✓  ${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`);
+  } else {
+    newTab();
+  }
+
+  // Restore .ajs file handle
+  try {
+    const stored = await idbGet('ajsHandle');
+    if (stored) { ajsFileHandle = stored; updateAsPill('saved', '✓', 'Auto-Save ON'); }
+  } catch(e) {}
+
+  // Auto-save every 30s
+  setInterval(performAutoSave, 30000);
+  window.addEventListener('beforeunload', performAutoSave);
+});
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+function createTab(name, content='', mode='text/x-csrc', cursor=null) {
+  const id = ++tabCounter;
+  const tab = { id, name, content, mode, cursor, dirty: false };
+  tabs.push(tab);
+  renderTabBar();
+  return id;
+}
+
+function newTab(name='untitled.c', content='', mode='text/x-csrc') {
+  const id = createTab(name, content, mode);
+  switchTab(id);
+}
+
+function switchTab(id) {
+  // Save current
+  if (activeTabId !== null) {
+    const cur = tabs.find(t => t.id === activeTabId);
+    if (cur) { cur.content = editor.getValue(); cur.cursor = editor.getCursor(); }
+  }
+  activeTabId = id;
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  editor.setValue(tab.content);
+  editor.setOption('mode', tab.mode);
+  if (tab.cursor) editor.setCursor(tab.cursor);
+  else editor.setCursor(0, 0);
+  document.getElementById('langSel').value = tab.mode;
+  editor.focus();
+  renderTabBar();
+  updateStatus();
+  scheduleAutoSave();
+}
+
+function closeTab(id) {
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  if (tab.dirty && !confirm(`Close "${tab.name}" without saving?`)) return;
+  const idx = tabs.indexOf(tab);
+  tabs.splice(idx, 1);
+  if (tabs.length === 0) { activeTabId = null; newTab(); return; }
+  if (activeTabId === id) switchTab(tabs[Math.max(0, idx-1)].id);
+  else renderTabBar();
+}
+
+function markDirty() {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab) { tab.dirty = true; renderTabBar(); }
+}
+
+function renderTabBar() {
+  const bar = document.getElementById('tab-bar');
+  const btn = document.getElementById('new-tab-btn');
+  // Remove old tabs
+  [...bar.querySelectorAll('.tab')].forEach(el => el.remove());
+  tabs.forEach(tab => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+    el.innerHTML = `
+      ${tab.dirty ? '<span class="dirty">●</span>' : ''}
+      <span onclick="switchTab(${tab.id})">${escHtml(tab.name)}</span>
+      <span class="close-tab" onclick="closeTab(${tab.id})">✕</span>`;
+    bar.insertBefore(el, btn);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════
+//  FILE OPS
+// ═══════════════════════════════════════════════
+function saveFile() {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (!tab) return;
+  tab.content = editor.getValue();
+  const blob = new Blob([tab.content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = tab.name;
+  a.click();
+  tab.dirty = false;
+  renderTabBar();
+  showToast(`Saved: ${tab.name}`);
+  performAutoSave();
+}
+
+function saveAs() {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (!tab) return;
+  const base = tab.name.replace(/\.[^.]+$/, '');
+  document.getElementById('modal-filename').value = base;
+  document.getElementById('modal-title').textContent = 'Save As';
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-filename').focus();
+}
+
+function confirmSaveAs() {
+  const name = document.getElementById('modal-filename').value.trim();
+  const ext = document.getElementById('modal-ext').value;
+  if (!name) return;
+  const fullName = name + ext;
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (!tab) return;
+  tab.content = editor.getValue();
+  tab.name = fullName;
+  tab.mode = extToMode(ext);
+  editor.setOption('mode', tab.mode);
+  tab.dirty = false;
+  renderTabBar();
+  closeModal();
+  // trigger download
+  const blob = new Blob([tab.content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fullName;
+  a.click();
+  showToast(`Saved: ${fullName}`);
+  performAutoSave();
+}
+
+function openFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = '.c,.cpp,.java,.py,.js,.html,.css,.sh,.json,.bat,.md,.txt,.ajs';
+  input.onchange = e => {
+    [...e.target.files].forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        if (file.name.endsWith('.ajs')) {
+          try {
+            const s = JSON.parse(ev.target.result);
+            if (s.tabs) {
+              tabs = [];
+              tabCounter = 0;
+              activeTabId = null;
+              s.tabs.forEach(t => createTab(t.name, t.content, t.mode, t.cursor));
+              switchTab(tabs[0].id);
+              showToast('Session loaded from .ajs ✓');
+              return;
+            }
+          } catch(e) {}
+        }
+        const ext = '.' + file.name.split('.').pop();
+        newTab(file.name, ev.target.result, extToMode(ext));
+      };
+      reader.readAsText(file);
+    });
+  };
+  input.click();
+}
+
+function extToMode(ext) {
+  const map = { '.c':'text/x-csrc', '.cpp':'text/x-c++src', '.java':'text/x-java',
+    '.py':'text/x-python', '.js':'text/javascript', '.html':'text/html',
+    '.css':'text/css', '.sh':'text/x-sh', '.json':'application/json',
+    '.bat':'text/x-batch', '.md':'text/x-markdown', '.txt':'text/plain', '.ajs':'application/json' };
+  return map[ext] || 'text/plain';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════
+//  AUTO-SAVE
+// ═══════════════════════════════════════════════
+function scheduleAutoSave() {
+  clearTimeout(asTimer);
+  asTimer = setTimeout(performAutoSave, 2000);
+}
+
+async function performAutoSave() {
+  // Save current editor content to tab
+  const cur = tabs.find(t => t.id === activeTabId);
+  if (cur) { cur.content = editor.getValue(); cur.cursor = editor.getCursor(); }
+
+  const session = {
+    v: 2,
+    savedAt: new Date().toISOString(),
+    tabs: tabs.map(t => ({ id: t.id, name: t.name, content: t.content, mode: t.mode, cursor: t.cursor })),
+    activeTabId,
+    cfg: {
+      dark: darkMode,
+      fontSize: document.getElementById('fontSel').value,
+      theme: document.getElementById('themeSel').value,
+      wrap: wordWrap
+    }
+  };
+
+  updateAsPill('saving', '<span class="spin">⟳</span>', 'Saving…');
+
+  // 1. localStorage
+  try { localStorage.setItem('novapad_session', JSON.stringify(session)); } catch(e) {}
+
+  // 2. .ajs file (File System Access API)
+  if (ajsFileHandle) {
+    try {
+      const writable = await ajsFileHandle.createWritable();
+      await writable.write(JSON.stringify(session, null, 2));
+      await writable.close();
+    } catch(e) { console.warn('AJS write failed', e); }
+  }
+
+  const now = new Date();
+  const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  updateAsPill('saved', '✓', ts);
+  document.getElementById('sbSaveTime').textContent = ts;
+}
+
+function updateAsPill(state, icon, label) {
+  const pill = document.getElementById('asPill');
+  pill.className = 'autosave-pill ' + state;
+  document.getElementById('asIcon').innerHTML = icon;
+  document.getElementById('asLabel').textContent = label;
+}
+
+async function configAutosave() {
+  if (!window.showSaveFilePicker) {
+    showToast('File System API not supported — using localStorage only');
+    return;
+  }
+  try {
+    ajsFileHandle = await window.showSaveFilePicker({
+      suggestedName: 'notes.ajs',
+      types: [{ description: 'NovaPad Session', accept: { 'application/json': ['.ajs'] } }]
+    });
+    await idbSet('ajsHandle', ajsFileHandle);
+    showToast('.ajs file set ✓  Auto-saving here');
+    performAutoSave();
+  } catch(e) {
+    if (e.name !== 'AbortError') showToast('Could not set .ajs file');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR ACTIONS
+// ═══════════════════════════════════════════════
+function clearContent() {
+  if (confirm('Clear all content in this tab?')) {
+    editor.setValue('');
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab) tab.dirty = true;
+    renderTabBar();
+  }
+}
+
+function duplicateLine() {
+  const cur = editor.getCursor();
+  const line = editor.getLine(cur.line);
+  editor.replaceRange('\n' + line, { line: cur.line, ch: line.length });
+}
+
+function toggleComment() {
+  editor.execCommand('toggleComment');
+}
+
+function formatCode() {
+  const lines = editor.getValue().split('\n');
+  let indent = 0;
+  const result = lines.map(raw => {
+    const line = raw.trim();
+    if (!line) return '';
+    if (line.match(/^[}\]\)]/)) indent = Math.max(0, indent - 1);
+    const out = '    '.repeat(indent) + line;
+    if (line.match(/[{\[\(]\s*$/) && !line.match(/[}\]\)]/)) indent++;
+    return out;
+  });
+  const cur = editor.getCursor();
+  editor.setValue(result.join('\n'));
+  editor.setCursor(cur);
+  showToast('Formatted ✓');
+}
+
+function sortLines() {
+  const lines = editor.getValue().split('\n');
+  editor.setValue(lines.sort().join('\n'));
+  showToast('Lines sorted ✓');
+}
+
+function copyAll() {
+  navigator.clipboard.writeText(editor.getValue()).then(() => showToast('Copied ✓'));
+}
+
+function changeLang() {
+  const mode = document.getElementById('langSel').value;
+  editor.setOption('mode', mode);
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab) tab.mode = mode;
+  updateStatus();
+}
+
+function changeFont() {
+  const sz = document.getElementById('fontSel').value;
+  editor.getWrapperElement().style.fontSize = sz + 'px';
+  editor.refresh();
+}
+
+function changeTheme() {
+  const theme = document.getElementById('themeSel').value;
+  editor.setOption('theme', theme);
+}
+
+function toggleWrap() {
+  wordWrap = !wordWrap;
+  editor.setOption('lineWrapping', wordWrap);
+  document.getElementById('wrapBtn').textContent = `↵ Wrap: ${wordWrap ? 'On' : 'Off'}`;
+}
+
+function toggleMinimap() {
+  minimapOn = !minimapOn;
+  document.getElementById('minimap-container').classList.toggle('visible', minimapOn);
+  document.getElementById('mmBtn').textContent = `▦ Map: ${minimapOn ? 'On' : 'Off'}`;
+  editor.refresh();
+  if (minimapOn) drawMinimap();
+}
+
+function drawMinimap() {
+  if (!minimapOn) return;
+  const canvas = document.getElementById('minimap-canvas');
+  const w = 80, lineH = 2;
+  const lines = editor.lineCount();
+  canvas.width = w;
+  canvas.height = lines * lineH;
+  canvas.style.height = (lines * lineH) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--surface').trim();
+  ctx.fillRect(0, 0, w, lines * lineH);
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text').trim();
+  for (let i = 0; i < lines; i++) {
+    const l = editor.getLine(i) || '';
+    if (l.trim()) ctx.fillRect(4, i * lineH, Math.min(l.length * 0.6, w - 8), 1);
+  }
+  setTimeout(() => { if (minimapOn) drawMinimap(); }, 2000);
+}
+
+function toggleTheme() {
+  darkMode = !darkMode;
+  document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  document.getElementById('themeToggle').textContent = darkMode ? '🌙' : '☀️';
+  if (darkMode) {
+    document.getElementById('themeSel').value = 'dracula';
+    editor.setOption('theme', 'dracula');
+  } else {
+    document.getElementById('themeSel').value = 'eclipse';
+    editor.setOption('theme', 'eclipse');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  FIND & REPLACE
+// ═══════════════════════════════════════════════
+function findOpen() {
+  document.getElementById('find-bar').classList.add('open');
+  document.getElementById('findInput').focus();
+  doFind();
+}
+
+function findClose() {
+  document.getElementById('find-bar').classList.remove('open');
+  editor.getAllMarks().forEach(m => m.clear());
+  findMatches = [];
+  editor.focus();
+}
+
+function doFind() {
+  editor.getAllMarks().forEach(m => m.clear());
+  findMatches = [];
+  findIdx = 0;
+  const q = document.getElementById('findInput').value;
+  if (!q) { document.getElementById('find-count').textContent = '0 matches'; return; }
+  const cursor = editor.getSearchCursor(q, CodeMirror.Pos(0, 0), false);
+  while (cursor.findNext()) {
+    findMatches.push({ from: cursor.from(), to: cursor.to() });
+    editor.markText(cursor.from(), cursor.to(), { className: 'cm-searching' });
+  }
+  document.getElementById('find-count').textContent = `${findMatches.length} match${findMatches.length !== 1 ? 'es' : ''}`;
+  if (findMatches.length) editor.scrollIntoView(findMatches[0]);
+}
+
+function findNext() {
+  if (!findMatches.length) return;
+  findIdx = (findIdx + 1) % findMatches.length;
+  editor.scrollIntoView(findMatches[findIdx]);
+  editor.setCursor(findMatches[findIdx].to);
+}
+
+function findPrev() {
+  if (!findMatches.length) return;
+  findIdx = (findIdx - 1 + findMatches.length) % findMatches.length;
+  editor.scrollIntoView(findMatches[findIdx]);
+  editor.setCursor(findMatches[findIdx].from);
+}
+
+function findKey(e) {
+  if (e.key === 'Enter') { e.shiftKey ? findPrev() : findNext(); }
+  if (e.key === 'Escape') findClose();
+}
+
+function doReplace() {
+  if (!findMatches.length) return;
+  const q = document.getElementById('findInput').value;
+  const r = document.getElementById('replaceInput').value;
+  const m = findMatches[findIdx];
+  editor.replaceRange(r, m.from, m.to);
+  doFind();
+}
+
+function doReplaceAll() {
+  const q = document.getElementById('findInput').value;
+  const r = document.getElementById('replaceInput').value;
+  if (!q) return;
+  let val = editor.getValue();
+  const count = (val.split(q).length - 1);
+  editor.setValue(val.split(q).join(r));
+  showToast(`Replaced ${count} occurrence${count !== 1 ? 's' : ''}`);
+  doFind();
+}
+
+// ═══════════════════════════════════════════════
+//  STATUS BAR
+// ═══════════════════════════════════════════════
+function updateStatus() {
+  if (!editor) return;
+  const cur = editor.getCursor();
+  document.getElementById('sbLn').textContent = cur.line + 1;
+  document.getElementById('sbCol').textContent = cur.ch + 1;
+  const sel = editor.getSelection();
+  document.getElementById('sbSel').textContent = sel.length;
+  const val = editor.getValue();
+  const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+  document.getElementById('sbWords').textContent = words;
+  document.getElementById('sbChars').textContent = val.length;
+  document.getElementById('sbLines').textContent = editor.lineCount();
+  // Lang badge
+  const mode = editor.getOption('mode');
+  const modeNames = { 'text/x-csrc':'C','text/x-c++src':'C++','text/x-java':'Java',
+    'text/x-python':'Python','text/javascript':'JS','text/html':'HTML','text/css':'CSS',
+    'text/x-sh':'Shell','application/json':'JSON','text/x-batch':'Batch',
+    'text/x-markdown':'Markdown','text/plain':'Text' };
+  document.getElementById('sbLang').textContent = modeNames[mode] || mode;
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg, dur=2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+document.getElementById('modal-filename').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmSaveAs();
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>
