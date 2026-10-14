@@ -1,20 +1,18 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/sssskyds/notepad-ajeet/main/assets/banner.svg" alt="NovaPad Banner" />
-
 # ⚡ NovaPad — Browser Notepad
 
-**A powerful, zero-install code & text editor that runs entirely in your browser.**  
+**A powerful, zero-install code & text editor that runs entirely in your browser.**
 No backend. No dependencies to install. Just open and type.
 
 [![Made with ❤ by Ajeet](https://img.shields.io/badge/Made%20with%20%E2%9D%A4%20by-Ajeet%20Kumar%20Sharma-blueviolet?style=flat-square)](https://github.com/sssskyds)
 [![HTML](https://img.shields.io/badge/Built%20with-HTML%2FJS%2FCSS-orange?style=flat-square&logo=html5)](#)
-[![CodeMirror](https://img.shields.io/badge/Editor-CodeMirror%205-blue?style=flat-square)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Zero Install](https://img.shields.io/badge/Install-Zero-success?style=flat-square)](#)
+[![Version](https://img.shields.io/badge/Version-2.1.0-blue?style=flat-square)](#)
 
-[🚀 **Live Demo**](https://sssskyds.github.io/notepad-ajeet/NovaPad-BrowserNotepad.html) &nbsp;·&nbsp;
-[📥 **Download**](https://github.com/sssskyds/notepad-ajeet/raw/main/NovaPad-BrowserNotepad.html) &nbsp;·&nbsp;
+[🚀 **Live Demo**](https://sssskyds.github.io/notepad-ajeet/) &nbsp;·&nbsp;
+[📥 **Download**](https://github.com/sssskyds/notepad-ajeet/raw/main/index.html) &nbsp;·&nbsp;
 [🐛 **Report Bug**](https://github.com/sssskyds/notepad-ajeet/issues)
 
 </div>
@@ -25,38 +23,40 @@ No backend. No dependencies to install. Just open and type.
 
 ### 🗂 Multi-Tab Editing
 - Open as many files as you need — each in its own tab
-- Unsaved tabs show a **●** dot indicator
-- `Ctrl+T` new tab · `Ctrl+W` close tab
+- Unsaved tabs show a dot indicator
+- Drag tabs to reorder · double-click to rename · middle-click / × to close
+- New tab: `Ctrl+Alt+N` (browser reserves `Ctrl+T` / `Ctrl+W`, so NovaPad does not use them)
 
 ### 🎨 Syntax Highlighting
-Full syntax highlighting via **CodeMirror 5** for:
+Built-in lightweight highlighter — no CodeMirror, no CDN. Zero dependencies.
 
-| Language | Extension |
+| Language | Extensions |
 |---|---|
-| C | `.c` |
-| C++ | `.cpp` |
-| Java | `.java` |
-| Python | `.py` |
-| JavaScript | `.js` |
-| HTML | `.html` |
+| Plain text | `.txt`, `.log`, `.csv` |
+| Markdown | `.md`, `.markdown` |
+| JavaScript | `.js`, `.mjs`, `.ts`, `.jsx` |
+| HTML | `.html`, `.htm` |
 | CSS | `.css` |
-| Shell / Bash | `.sh` |
+| Python | `.py` |
 | JSON | `.json` |
-| Batch | `.bat` |
-| Markdown | `.md` |
+| SQL | `.sql` |
+| Shell | `.sh`, `.bash`, `.zsh`, `.bat`, `.cmd`, `.ps1` |
+| C / C++ / Java (shared C-like highlighting) | `.c`, `.h`, `.cpp`, `.cc`, `.hpp`, `.java`, `.cs` |
+| XML | `.xml`, `.svg` |
+
+> Note: C, C++ and Java share one C-like highlighter. Batch (`.bat` / `.cmd`) is highlighted as Shell.
 
 ### 💾 Auto-Save & Session Restore
-- **Auto-saves every 2 seconds** after the last keystroke (debounced)
-- **Periodic save every 30 seconds** in the background
-- Session is saved to **localStorage** — survives browser restarts
-- Optional **`.ajs` physical file** auto-save via File System Access API (Chrome/Edge)
-- On every restart, NovaPad **restores all tabs, cursor positions, settings, and content** exactly where you left off
-- `.ajs` is plain **JSON** — readable in any editor
+- Auto-saves to **localStorage** (key `novapad.v2`) after the last keystroke — delay configurable: Instant / 1 s (default) / 3 s in Settings
+- On restart, restores **all tabs, content, saved state, language, cursor position, and settings**
+- Real files: open / edit / save via File System Access API (Chrome/Edge) or download fallback. Drag & drop files to open (8 MB max per file).
+- ⚠️ File links do **not** survive a reload (browser security). After reload, use `Ctrl+S` to re-link a file. Large files (>1 MB) may exceed localStorage — NovaPad warns if auto-save fails.
+- Legacy `.ajs` session files (v1 format) can be **opened** to restore a session, but NovaPad no longer auto-saves to `.ajs`.
 
 ### 🔍 Find & Replace
 - `Ctrl+F` to open inline search bar
-- Live **match highlighting** as you type
-- Match counter (e.g. `5 matches`)
+- Match case (`Aa`), whole word (`W`), regex (`.*`) toggles
+- Match counter (e.g. `3 of 12`)
 - **Enter / Shift+Enter** to jump next/previous
 - Replace single occurrence or **Replace All**
 
@@ -64,36 +64,46 @@ Full syntax highlighting via **CodeMirror 5** for:
 | Feature | Shortcut |
 |---|---|
 | Save | `Ctrl+S` |
-| Save As | `Ctrl+Shift+S` |
+| Download as… | `Ctrl+Shift+S` |
 | Open file(s) | `Ctrl+O` |
-| New tab | `Ctrl+T` |
-| Close tab | `Ctrl+W` |
+| New tab | `Ctrl+Alt+N` |
 | Find & Replace | `Ctrl+F` |
+| Find + focus Replace | `Ctrl+H` |
+| Go to line | `Ctrl+G` |
 | Duplicate line | `Ctrl+D` |
+| Delete line | `Ctrl+Shift+K` |
+| Move line up / down | `Alt+↑` / `Alt+↓` |
 | Toggle comment | `Ctrl+/` |
-| Auto-complete | `Ctrl+Space` |
+| Markdown preview | `Ctrl+Shift+M` |
+| Command palette | `Ctrl+K` |
+| Zen mode | `F10` |
+| Increase / decrease font | `Ctrl+=` / `Ctrl+-` |
 | Indent | `Tab` |
 | Unindent | `Shift+Tab` |
 
-- **Code folding** — collapse `{}` blocks in the gutter
 - **Active line highlight** — subtle highlight on cursor's line
-- **Auto-close brackets** — `{`, `[`, `(`
-- **Format / Re-indent** — smart auto-indent all lines
-- **Sort lines** alphabetically
-- **Copy All** — copies full editor content to clipboard
-- **Word Wrap** toggle
-- **Minimap** — scrollable code overview panel
+- **Auto-close brackets** — `{`, `[`, `(`, quotes
+- **Auto-indent** on Enter (keeps current line indent; splits `{}` pairs)
+- **Line tools** — sort A→Z / Z→A, remove duplicates, reverse, join, trim trailing spaces, remove empty lines
+- **Case** — UPPERCASE / lowercase / Title Case / Sentence case (requires a selection)
+- **Convert** — Format / minify JSON (selection or whole doc), Base64 encode/decode, URL encode/decode (selection required)
+- **Copy All**, **Clear document**, **Insert date & time**
+- **Multi-cursor & column editing** — `Ctrl+Click` to add a cursor, `Alt+drag` / `Ctrl+Shift+drag` for column selection, `Ctrl+Alt+↑/↓` to add cursor above/below. Type, Backspace, or paste once to edit every cursor.
+- **Markdown preview** — live preview + Export as HTML
+- **Tools** — Dictation (speech to text), Read aloud, Print / PDF, Document statistics
+
+> Not in v2: code folding, minimap, and auto-complete were in the old CodeMirror build and were removed in the custom-editor rewrite. They are not in v2.1.
 
 ### 🎨 Themes & Appearance
-- 🌙 **Dracula** (dark) — default
-- ☀ **Eclipse** (light)
-- ◻ **Classic** (CodeMirror default)
-- One-click **dark/light mode toggle** synced with system preference
-- Font size selector: 12px → 20px
-- Font: **JetBrains Mono** (code) + **Inter** (UI)
+- **System** (follows OS) · **Light** · **Dark** · **Sepia** · **Nord**
+- Theme button cycles through all five, including System. Settings also lets you pick directly.
+- Editor font: Monospace / Sans serif / Serif (system font stacks — no webfont download)
+- Font size: 12–22 px in Settings (`Ctrl+=` / `Ctrl+-` adjusts 10–28 px)
+- Line height, tab size (2 / 4 / 8), word wrap, line numbers, highlight active line, spell check
 
 ### 📊 Status Bar
-Always shows: `Language` · `Line/Col` · `Selection chars` · `Word count` · `Char count` · `Total lines` · `Last save time`
+Shows: `Line/Col` · `Selection` (chars + words, when selected) · `Words` · `Chars` · `~min reading time` · `Stats` · `Language`.
+Total lines, paragraphs, sentences, unique words, and average word length live in **Document statistics** (Stats button / Command palette).
 
 ---
 
@@ -102,58 +112,22 @@ Always shows: `Language` · `Line/Col` · `Selection chars` · `Word count` · `
 ### Option 1 — Just download and open
 ```bash
 # Download the file
-wget https://github.com/sssskyds/notepad-ajeet/raw/main/NovaPad-BrowserNotepad.html
+wget https://github.com/sssskyds/notepad-ajeet/raw/main/index.html
 
 # Open in browser
-start NovaPad-BrowserNotepad.html   # Windows
-open NovaPad-BrowserNotepad.html    # macOS
-xdg-open NovaPad-BrowserNotepad.html # Linux
+start index.html   # Windows
+open index.html    # macOS
+xdg-open index.html # Linux
 ```
 
 ### Option 2 — Clone the repo
 ```bash
 git clone https://github.com/sssskyds/notepad-ajeet.git
 cd notepad-ajeet
-start NovaPad-BrowserNotepad.html
+start index.html
 ```
 
-> ✅ **No server required.** The entire app is a single self-contained HTML file.
-
----
-
-## 💾 .ajs Auto-Save File
-
-The `.ajs` session file is a plain JSON file that stores your entire NovaPad session:
-
-```json
-{
-  "v": 2,
-  "savedAt": "2026-04-06T12:00:00.000Z",
-  "tabs": [
-    {
-      "name": "main.c",
-      "content": "#include <stdio.h>\n...",
-      "mode": "text/x-csrc",
-      "cursor": { "line": 5, "ch": 0 }
-    }
-  ],
-  "activeTabId": 1,
-  "cfg": {
-    "dark": true,
-    "fontSize": "14",
-    "theme": "dracula",
-    "wrap": false
-  }
-}
-```
-
-**To enable physical `.ajs` file saving:**
-1. Click the **⚡ Auto-Save** pill in the toolbar
-2. A Save dialog opens — navigate to the **same folder as NovaPad** and save `notes.ajs`
-3. From now on, every keystroke auto-saves to this file
-
-> ⚠️ Physical `.ajs` file saving requires **Chrome or Edge** (File System Access API).  
-> In Firefox, session saves and restores via localStorage — works perfectly.
+> ✅ **No server required.** The entire app is a single self-contained HTML file. Open `index.html` directly, or serve it via GitHub Pages.
 
 ---
 
@@ -161,10 +135,10 @@ The `.ajs` session file is a plain JSON file that stores your entire NovaPad ses
 
 | Component | Technology |
 |---|---|
-| Editor engine | [CodeMirror 5](https://codemirror.net/) |
-| UI fonts | [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) + [Inter](https://fonts.google.com/specimen/Inter) |
-| Session storage | `localStorage` + IndexedDB + File System Access API |
-| Zero dependencies | Pure HTML/CSS/JavaScript |
+| Editor engine | Custom `<textarea>` + highlight overlay + built-in tokenizer (no CodeMirror) |
+| UI fonts | System stacks: `ui-monospace / SF Mono / Menlo / Consolas` (code) + system UI sans |
+| Session storage | `localStorage` only + File System Access API for real files |
+| Zero dependencies | Pure HTML/CSS/JavaScript — no CDN, no build step |
 
 ---
 
@@ -172,10 +146,18 @@ The `.ajs` session file is a plain JSON file that stores your entire NovaPad ses
 
 ```
 notepad-ajeet/
-├── NovaPad-BrowserNotepad.html   ← The entire app (single file)
+├── index.html   ← The entire app (single file, v2.1.0)
 ├── README.md
 └── LICENSE
 ```
+
+---
+
+## 📜 Changelog
+
+- **v2.1.0 (2026-10-13)** — Fix release: Markdown-preview XSS via image `alt` (attributes now escaped), theme cycle now includes System, cursor position saved/restored per tab + across reloads, case/Base64/URL tools now require a selection (no more whole-doc surprise), close-tab always confirms unsaved tabs, JSON has no comment syntax (toggle-comment no longer inserts `//`), `.bat` / `.cmd` / `.ps1` map to Shell highlighting, `.ajs` session files can be opened to restore, file-link loss on reload is surfaced, large-file auto-save warning, early-theme script (no light flash), download anchor fixed for Firefox, README rewritten to match the actual app, placeholder `notepad-ajeet.html` removed.
+- **v2.0 (2026-07-23)** — Rewrite: dropped CodeMirror, custom tokenizer + highlight overlay, multi-cursor / column select, markdown preview, themes Light/Dark/Sepia/Nord + System, `index.html` rename.
+- **v2.0 / v1 (2026-05-22)** — Initial release: CodeMirror 5 build with minimap, folding, `.ajs` auto-save, IndexedDB handle storage.
 
 ---
 
