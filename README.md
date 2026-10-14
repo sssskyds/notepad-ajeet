@@ -9,7 +9,7 @@ No backend. No dependencies to install. Just open and type.
 [![HTML](https://img.shields.io/badge/Built%20with-HTML%2FJS%2FCSS-orange?style=flat-square&logo=html5)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Zero Install](https://img.shields.io/badge/Install-Zero-success?style=flat-square)](#)
-[![Version](https://img.shields.io/badge/Version-2.1.0-blue?style=flat-square)](#)
+[![Version](https://img.shields.io/badge/Version-2.2.0-blue?style=flat-square)](#)
 
 [🚀 **Live Demo**](https://sssskyds.github.io/notepad-ajeet/) &nbsp;·&nbsp;
 [📥 **Download**](https://github.com/sssskyds/notepad-ajeet/raw/main/index.html) &nbsp;·&nbsp;
@@ -89,10 +89,10 @@ Built-in lightweight highlighter — no CodeMirror, no CDN. Zero dependencies.
 - **Convert** — Format / minify JSON (selection or whole doc), Base64 encode/decode, URL encode/decode (selection required)
 - **Copy All**, **Clear document**, **Insert date & time**
 - **Multi-cursor & column editing** — `Ctrl+Click` to add a cursor, `Alt+drag` / `Ctrl+Shift+drag` for column selection, `Ctrl+Alt+↑/↓` to add cursor above/below. Type, Backspace, or paste once to edit every cursor.
-- **Markdown preview** — live preview + Export as HTML
+- **Markdown preview** — live preview + Export as HTML, with LaTeX math (`$...$`, `$$...$$`, `\(...\)`, `\[...\]`) and live Mermaid diagrams (fenced ```mermaid blocks)
 - **Tools** — Dictation (speech to text), Read aloud, Print / PDF, Document statistics
 
-> Not in v2: code folding, minimap, and auto-complete were in the old CodeMirror build and were removed in the custom-editor rewrite. They are not in v2.1.
+> Not in v2: code folding, minimap, and auto-complete were in the old CodeMirror build and were removed in the custom-editor rewrite. They are not in v2.2.
 
 ### 🎨 Themes & Appearance
 - **System** (follows OS) · **Light** · **Dark** · **Sepia** · **Nord**
@@ -138,7 +138,7 @@ start index.html
 | Editor engine | Custom `<textarea>` + highlight overlay + built-in tokenizer (no CodeMirror) |
 | UI fonts | System stacks: `ui-monospace / SF Mono / Menlo / Consolas` (code) + system UI sans |
 | Session storage | `localStorage` only + File System Access API for real files |
-| Zero dependencies | Pure HTML/CSS/JavaScript — no CDN, no build step |
+| Zero dependencies | Pure HTML/CSS/JavaScript — no build step. LaTeX math renders offline (built-in converter). Mermaid diagrams load the Mermaid library from CDN (jsDelivr) only when a ```mermaid block is previewed or exported; with no internet, the diagram source is shown instead. |
 
 ---
 
@@ -146,7 +146,7 @@ start index.html
 
 ```
 notepad-ajeet/
-├── index.html   ← The entire app (single file, v2.1.0)
+├── index.html   ← The entire app (single file, v2.2.0)
 ├── README.md
 └── LICENSE
 ```
@@ -155,6 +155,7 @@ notepad-ajeet/
 
 ## 📜 Changelog
 
+- **v2.2.0 (2026-10-14)** — LaTeX math in Markdown preview (offline built-in converter: `$...$`, `$$...$$`, `\(...\)`, `\[...\]`, fractions, roots, Greek letters, sub/superscripts, matrices; `$` inside code stays literal; unknown commands degrade to plain text; math content is HTML-escaped so it cannot inject markup) + live Mermaid diagrams from fenced ```mermaid blocks (library loaded from CDN on first use, `securityLevel: strict`, syntax errors fall back to the diagram source with an error note, offline falls back to a code block). Exported HTML carries the math styles and loads Mermaid only when the document contains a diagram.
 - **v2.1.0 (2026-10-13)** — Fix release: Markdown-preview XSS via image `alt` (attributes now escaped), theme cycle now includes System, cursor position saved/restored per tab + across reloads, case/Base64/URL tools now require a selection (no more whole-doc surprise), close-tab always confirms unsaved tabs, JSON has no comment syntax (toggle-comment no longer inserts `//`), `.bat` / `.cmd` / `.ps1` map to Shell highlighting, `.ajs` session files can be opened to restore, file-link loss on reload is surfaced, large-file auto-save warning, early-theme script (no light flash), download anchor fixed for Firefox, README rewritten to match the actual app, placeholder `notepad-ajeet.html` removed.
 - **v2.0 (2026-07-23)** — Rewrite: dropped CodeMirror, custom tokenizer + highlight overlay, multi-cursor / column select, markdown preview, themes Light/Dark/Sepia/Nord + System, `index.html` rename.
 - **v2.0 / v1 (2026-05-22)** — Initial release: CodeMirror 5 build with minimap, folding, `.ajs` auto-save, IndexedDB handle storage.
