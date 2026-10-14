@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta name="color-scheme" content="light dark"/>
 <title>NovaPad — Browser Notepad</title>
+<script>try{var _s=JSON.parse(localStorage.getItem('novapad.v2')||'null');var _t=_s&&_s.settings&&_s.settings.theme;if(_t&&_t!=='system')document.documentElement.dataset.theme=_t;else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.dataset.theme='dark';}catch(_){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232783DE'/%3E%3Cpath d='M9 23V9h3l8 10V9h3v14h-3L12 13v10z' fill='white'/%3E%3C/svg%3E"/>
 <style>
 /* ============ THEMES ============ */
@@ -425,6 +426,7 @@ body.zen #zen-exit{display:flex}
       <label class="check"><span>Line numbers<small>Show the gutter with line numbers</small></span><span class="sw"><input type="checkbox" id="set-gutter" checked/><i></i></span></label>
       <label class="check"><span>Highlight active line</span><span class="sw"><input type="checkbox" id="set-curline" checked/><i></i></span></label>
       <label class="check"><span>Spell check<small>Browser spell checking while typing</small></span><span class="sw"><input type="checkbox" id="set-spell"/><i></i></span></label>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">NovaPad v2.1.0 · Single-file app · Auto-saves to this browser (localStorage). File links do not survive reload.</p>
     </div>
     <div class="card-foot"><button class="btn danger" onclick="resetAll()">Reset app</button><button class="btn primary" onclick="closeDialogs()">Done</button></div>
   </div>
@@ -491,6 +493,7 @@ body.zen #zen-exit{display:flex}
 const $=id=>document.getElementById(id);
 const ta=$('input'), hlPre=$('hl'), hlCode=$('hl-code'), pane=$('editor-pane');
 const LS='novapad.v2';
+const APP_VERSION='2.1.0';
 const IS_MAC=/Mac|iP(hone|ad|od)/.test(navigator.platform);
 const MOD=IS_MAC?'\u2318':'Ctrl';
 
@@ -498,10 +501,11 @@ const settings={theme:'system',font:'mono',fontSize:14,lineHeight:1.65,tabSize:2
 let tabs=[],active=0,tabSeq=1,untitledSeq=1;
 
 const LANGS={text:'Plain text',markdown:'Markdown',javascript:'JavaScript',html:'HTML',css:'CSS',python:'Python',json:'JSON',sql:'SQL',shell:'Shell',c:'C / C++ / Java',xml:'XML'};
-const EXT2LANG={js:'javascript',mjs:'javascript',ts:'javascript',jsx:'javascript',md:'markdown',markdown:'markdown',html:'html',htm:'html',css:'css',py:'python',json:'json',sql:'sql',sh:'shell',bash:'shell',zsh:'shell',c:'c',h:'c',cpp:'c',cc:'c',hpp:'c',java:'c',cs:'c',xml:'xml',svg:'xml',txt:'text',log:'text',csv:'text'};
-const COMMENT_PREFIX={javascript:'//',c:'//',css:'/*',python:'#',shell:'#',sql:'--',html:'<!--',xml:'<!--',markdown:'>',json:'//',text:'#'};
+const EXT2LANG={js:'javascript',mjs:'javascript',ts:'javascript',jsx:'javascript',md:'markdown',markdown:'markdown',html:'html',htm:'html',css:'css',py:'python',json:'json',sql:'sql',sh:'shell',bash:'shell',zsh:'shell',bat:'shell',cmd:'shell',ps1:'shell',c:'c',h:'c',cpp:'c',cc:'c',hpp:'c',java:'c',cs:'c',xml:'xml',svg:'xml',txt:'text',log:'text',csv:'text'};
+const COMMENT_PREFIX={javascript:'//',c:'//',css:'/*',python:'#',shell:'#',sql:'--',html:'<!--',xml:'<!--',markdown:'>',json:null,text:'#'};
 
 const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const attrEsc=s=>esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const sp=(c,s)=>'<span class="tk-'+c+'">'+esc(s)+'</span>';
 
 /* ============ TOKENIZERS ============ */
@@ -692,8 +696,12 @@ function lineSpan(){
   return[ls,le];
 }
 function selOrAll(){const s=ta.selectionStart,e=ta.selectionEnd;return e>s?[s,e]:[0,ta.value.length]}
-function transformSel(fn,label){
-  const[a,b]=selOrAll();if(a===b){toast('Nothing to transform','info');return}
+function transformSel(fn,label,opts){
+  const needSel=opts&&opts.requireSel;
+  const s=ta.selectionStart,e=ta.selectionEnd;
+  if(needSel&&e<=s){toast('Select text first','info');return}
+  const[a,b]=e>s?[s,e]:[0,ta.value.length];
+  if(a===b){toast('Nothing to transform','info');return}
   replaceRange(fn(ta.value.slice(a,b)),a,b);
   if(label)toast(label,'ok');
 }
@@ -709,21 +717,26 @@ function transformLines(fn,label){
 /* ============ TABS ============ */
 function tab(){return tabs[active]}
 function newTab(name,content,lang){
-  tabs.push({id:tabSeq++,name:name||('Untitled '+(untitledSeq++)),content:content||'',saved:content||'',lang:lang||'text',handle:null});
+  tabs.push({id:tabSeq++,name:name||('Untitled '+(untitledSeq++)),content:content||'',saved:content||'',lang:lang||'text',handle:null,cursor:{s:0,e:0},hadHandle:false});
   switchTab(tabs.length-1);
 }
+function saveCursor(){const t=tab();if(t){try{t.cursor={s:ta.selectionStart,e:ta.selectionEnd}}catch(_){}}}
 function switchTab(i){
+  saveCursor();
   active=Math.max(0,Math.min(i,tabs.length-1));
   ta.value=tab().content;
   closeFindSilent();
   renderTabs();renderHL();updateStatus();updateLangUI();updatePreview();persistSoon();
-  ta.setSelectionRange(0,0);ta.focus();
+  const c=tab().cursor||{s:0,e:0};
+  const ps=Math.max(0,Math.min(c.s,ta.value.length)),pe=Math.max(0,Math.min(c.e,ta.value.length));
+  try{ta.setSelectionRange(ps,pe)}catch(_){}
+  ta.focus();
 }
 function isUnsaved(t){return t.content!==t.saved}
 function closeTab(i){
   const t=tabs[i];
   const doClose=()=>{tabs.splice(i,1);if(!tabs.length){untitledSeq=1;newTab()}else switchTab(i>=tabs.length?tabs.length-1:(i<active?active-1:(i===active?Math.min(active,tabs.length-1):active)));renderTabs();persistSoon()};
-  if(isUnsaved(t)&&t.content.trim())askConfirm('Close “'+t.name+'”?','This tab has changes that were never saved to a file. Its content stays in browser auto-save history only until the tab is closed.',doClose,'Close tab');
+  if(isUnsaved(t))askConfirm('Close “'+t.name+'”?','This tab has changes that were never saved to a file. Its content stays in browser auto-save history only until the tab is closed.',doClose,'Close tab');
   else doClose();
 }
 let dragIdx=null;
@@ -775,7 +788,8 @@ function persistSoon(){
 }
 function persistNow(){
   try{
-    localStorage.setItem(LS,JSON.stringify({v:2,active,untitledSeq,settings,tabs:tabs.map(t=>({name:t.name,content:t.content,saved:t.saved,lang:t.lang}))}));
+    saveCursor();
+    localStorage.setItem(LS,JSON.stringify({v:2,active,untitledSeq,settings,tabs:tabs.map(t=>({name:t.name,content:t.content,saved:t.saved,lang:t.lang,cursor:t.cursor||{s:0,e:0},hadHandle:!!t.handle||!!t.hadHandle}))}));
     pill('saved','All changes saved');
   }catch(err){pill('','Not saved');toast('Auto-save failed — storage may be full','err')}
 }
@@ -785,7 +799,7 @@ function loadPersisted(){
     if(!d||!d.tabs||!d.tabs.length)return false;
     Object.assign(settings,d.settings||{});
     untitledSeq=d.untitledSeq||1;
-    tabs=d.tabs.map(t=>({id:tabSeq++,name:t.name,content:t.content||'',saved:t.saved!=null?t.saved:t.content||'',lang:t.lang||'text',handle:null}));
+    tabs=d.tabs.map(t=>({id:tabSeq++,name:t.name,content:t.content||'',saved:t.saved!=null?t.saved:t.content||'',lang:t.lang||'text',handle:null,cursor:t.cursor||{s:0,e:0},hadHandle:!!t.hadHandle}));
     active=Math.min(d.active||0,tabs.length-1);
     return true;
   }catch(_){return false}
@@ -940,15 +954,33 @@ async function openFilePicker(){
 async function openFileObj(f,handle){
   if(f.size>8*1024*1024){toast('“'+f.name+'” is too large (8 MB max)','err');return}
   const text=await f.text();
+  if(/\.ajs$/i.test(f.name)){
+    try{
+      const sess=JSON.parse(text);
+      const stabs=sess.tabs||sess.session&&sess.session.tabs;
+      if(Array.isArray(stabs)&&stabs.length){
+        const mode2lang={ 'text/x-csrc':'c','text/x-c++src':'c','text/x-java':'c','text/javascript':'javascript','text/x-python':'python','text/html':'html','text/css':'css','application/json':'json','text/x-sql':'sql','text/x-sh':'shell','text/x-markdown':'markdown','text/plain':'text' };
+        tabs=stabs.map(t=>{
+          const cur=(t.cursor&&typeof t.cursor.s==='number'&&typeof t.cursor.e==='number')?t.cursor:{s:0,e:0};
+          const lg=t.lang||mode2lang[t.mode]||langFromName(t.name||'');
+          return {id:tabSeq++,name:t.name||'Untitled',content:t.content||'',saved:t.content||'',lang:lg,handle:null,cursor:cur,hadHandle:false};
+        });
+        active=Math.min(sess.active||0,tabs.length-1);
+        ta.value=tab().content;renderTabs();renderHL();updateStatus();updateLangUI();updatePreview();persistSoon();
+        toast('Session restored from “'+f.name+'”','ok');return;
+      }
+    }catch(_){}
+  }
   const cur=tab();
   if(cur&&!cur.content&&!isUnsaved(cur)&&!cur.handle){
-    cur.name=f.name;cur.content=text;cur.saved=text;cur.lang=langFromName(f.name);cur.handle=handle||null;
+    cur.name=f.name;cur.content=text;cur.saved=text;cur.lang=langFromName(f.name);cur.handle=handle||null;cur.hadHandle=!!handle;cur.cursor={s:0,e:0};
     switchTab(active);
   }else{
     newTab(f.name,text,langFromName(f.name));
-    tab().handle=handle||null;tab().saved=text;renderTabs();
+    tab().handle=handle||null;tab().hadHandle=!!handle;tab().saved=text;renderTabs();
   }
-  toast('Opened “'+f.name+'”','ok');
+  if(f.size>1024*1024)toast('Large file — browser auto-save may fail if storage fills','info');
+  else toast('Opened “'+f.name+'”','ok');
 }
 async function saveFile(){
   const t=tab();
@@ -962,7 +994,7 @@ async function saveFile(){
     try{
       const h=await window.showSaveFilePicker({suggestedName:suggestName(t)});
       const w=await h.createWritable();await w.write(t.content);await w.close();
-      t.handle=h;const f=await h.getFile();t.name=f.name;t.lang=langFromName(f.name);t.saved=t.content;
+      t.handle=h;t.hadHandle=true;const f=await h.getFile();t.name=f.name;t.lang=langFromName(f.name);t.saved=t.content;
       renderTabs();updateLangUI();scheduleRender();persistSoon();toast('Saved “'+t.name+'”','ok');return;
     }catch(e){if(e&&e.name==='AbortError')return}
   }
@@ -985,7 +1017,7 @@ function confirmSaveAs(){
 function download(name,content,type){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([content],{type}));
-  a.download=name;a.click();
+  a.download=name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 function exportHTML(){
@@ -1004,8 +1036,8 @@ function mdInlineHTML(s){
   const codes=[];
   s=esc(s);
   s=s.replace(/`([^`]+)`/g,(_,c)=>{codes.push(c);return '\x00'+(codes.length-1)+'\x00'});
-  s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,(_,alt,src)=>/^(https?:|data:image)/.test(src)?'<img src="'+src+'" alt="'+alt+'">':alt);
-  s=s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g,(_,txt,href)=>/^(https?:|mailto:|#)/.test(href)?'<a href="'+href+'" target="_blank" rel="noopener">'+txt+'</a>':txt);
+  s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,(_,alt,src)=>/^(https?:|data:image)/.test(src)?'<img src="'+attrEsc(src)+'" alt="'+attrEsc(alt)+'">':attrEsc(alt));
+  s=s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g,(_,txt,href)=>/^(https?:|mailto:|#)/.test(href)?'<a href="'+attrEsc(href)+'" target="_blank" rel="noopener">'+txt+'</a>':txt);
   s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/__([^_]+)__/g,'<strong>$1</strong>');
   s=s.replace(/(^|\W)\*([^*\s][^*]*)\*/g,'$1<em>$2</em>').replace(/(^|\W)_([^_\s][^_]*)_/g,'$1<em>$2</em>');
   s=s.replace(/~~([^~]+)~~/g,'<del>$1</del>');
@@ -1070,7 +1102,8 @@ function jsonTool(pretty){
   catch(e){toast('Invalid JSON: '+e.message.slice(0,60),'err')}
 }
 function toggleComment(){
-  const t=tab();const p=COMMENT_PREFIX[t.lang]||'#';
+  const t=tab();const p=COMMENT_PREFIX[t.lang];
+  if(!p){toast('No comment syntax for '+ (LANGS[t.lang]||t.lang),'info');return}
   const wrap=p==='/*'||p==='<!--';
   const close=p==='/*'?' */':' -->';
   const[a,b]=lineSpan();const seg=ta.value.slice(a,b);const arr=seg.split('\n');
@@ -1123,7 +1156,8 @@ function toggleReadAloud(){
 }
 
 /* ============ THEME ============ */
-const THEMES=['light','dark','sepia','nord'];
+const THEMES=['system','light','dark','sepia','nord'];
+const THEME_LABEL={system:'System',light:'Light',dark:'Dark',sepia:'Sepia',nord:'Nord'};
 const mq=window.matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(){
   const t=settings.theme==='system'?(mq.matches?'dark':'light'):settings.theme;
@@ -1131,10 +1165,10 @@ function applyTheme(){
 }
 mq.addEventListener('change',()=>{if(settings.theme==='system')applyTheme()});
 function cycleTheme(){
-  const cur=document.documentElement.dataset.theme;
+  const cur=settings.theme;
   settings.theme=THEMES[(THEMES.indexOf(cur)+1)%THEMES.length];
   applyTheme();syncSettingsUI();persistSoon();
-  toast('Theme: '+settings.theme[0].toUpperCase()+settings.theme.slice(1),'info');
+  toast('Theme: '+ (THEME_LABEL[settings.theme]||settings.theme),'info');
 }
 
 /* ============ SETTINGS ============ */
@@ -1238,16 +1272,16 @@ const commands=[
   {id:'joinLines',t:'Join lines',cat:'Lines',run:()=>transformLines(a=>[a.map(l=>l.trim()).filter(Boolean).join(' ')],'Lines joined')},
   {id:'trimWs',t:'Trim trailing spaces',cat:'Lines',run:()=>transformLines(a=>a.map(l=>l.replace(/[ \t]+$/,'')),'Trailing spaces removed')},
   {id:'removeEmpty',t:'Remove empty lines',cat:'Lines',run:()=>transformLines(a=>a.filter(l=>l.trim()),'Empty lines removed')},
-  {id:'upper',t:'UPPERCASE',cat:'Case',run:()=>transformSel(s=>s.toUpperCase())},
-  {id:'lower',t:'lowercase',cat:'Case',run:()=>transformSel(s=>s.toLowerCase())},
-  {id:'title',t:'Title Case',cat:'Case',run:()=>transformSel(titleCase)},
-  {id:'sentence',t:'Sentence case',cat:'Case',run:()=>transformSel(sentenceCase)},
+  {id:'upper',t:'UPPERCASE',cat:'Case',run:()=>transformSel(s=>s.toUpperCase(),null,{requireSel:true})},
+  {id:'lower',t:'lowercase',cat:'Case',run:()=>transformSel(s=>s.toLowerCase(),null,{requireSel:true})},
+  {id:'title',t:'Title Case',cat:'Case',run:()=>transformSel(titleCase,null,{requireSel:true})},
+  {id:'sentence',t:'Sentence case',cat:'Case',run:()=>transformSel(sentenceCase,null,{requireSel:true})},
   {id:'jsonFmt',t:'Format JSON',cat:'Convert',run:()=>jsonTool(true)},
   {id:'jsonMin',t:'Minify JSON',cat:'Convert',run:()=>jsonTool(false)},
-  {id:'b64e',t:'Base64 encode',cat:'Convert',run:()=>transformSel(b64enc)},
-  {id:'b64d',t:'Base64 decode',cat:'Convert',run:()=>transformSel(b64dec)},
-  {id:'urle',t:'URL encode',cat:'Convert',run:()=>transformSel(encodeURIComponent)},
-  {id:'urld',t:'URL decode',cat:'Convert',run:()=>transformSel(s=>{try{return decodeURIComponent(s)}catch(_){toast('Not valid URL encoding','err');return s}})},
+  {id:'b64e',t:'Base64 encode',cat:'Convert',run:()=>transformSel(b64enc,null,{requireSel:true})},
+  {id:'b64d',t:'Base64 decode',cat:'Convert',run:()=>transformSel(b64dec,null,{requireSel:true})},
+  {id:'urle',t:'URL encode',cat:'Convert',run:()=>transformSel(encodeURIComponent,null,{requireSel:true})},
+  {id:'urld',t:'URL decode',cat:'Convert',run:()=>transformSel(s=>{try{return decodeURIComponent(s)}catch(_){toast('Not valid URL encoding','err');return s}},null,{requireSel:true})},
   {id:'dateTime',t:'Insert date & time',cat:'Insert',run:insertDateTime},
   {id:'preview',t:'Markdown preview',cat:'View',sc:MOD+'+Shift+M',run:togglePreview},
   {id:'zen',t:'Zen mode',cat:'View',sc:'F10',run:()=>{document.body.classList.toggle('zen');fitHL();scheduleRender();ta.focus()}},
@@ -1466,15 +1500,18 @@ const WELCOME=[
 /* ============ INIT ============ */
 function init(){
   buildMenus();bindSettings();
+  let restored=false;
   if(!loadPersisted()){
-    tabs=[{id:tabSeq++,name:'Welcome',content:WELCOME,saved:WELCOME,lang:'markdown',handle:null}];
+    tabs=[{id:tabSeq++,name:'Welcome',content:WELCOME,saved:WELCOME,lang:'markdown',handle:null,cursor:{s:0,e:0},hadHandle:false}];
     active=0;
-  }
+  } else restored=true;
   applySettings();syncSettingsUI();
   ta.value=tab().content;
   renderTabs();renderHL();updateStatus();updateLangUI();
   pill('saved','All changes saved');
   fitHL();
+  if(restored&&tab().cursor){try{const c=tab().cursor;ta.setSelectionRange(Math.min(c.s,ta.value.length),Math.min(c.e,ta.value.length))}catch(_){}} 
+  if(restored&&tabs.some(t=>t.hadHandle))setTimeout(()=>toast('File links do not survive reload (browser security) — use Ctrl+S to re-link a file','info'),800);
   /* preview QA/deep-link states */
   const h=location.hash;
   if(h.startsWith('#qa-')){
