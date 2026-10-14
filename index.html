@@ -189,6 +189,21 @@ body.preview-on #preview{display:block}
 #preview-inner th{background:var(--surface)}
 #preview-inner img{max-width:100%;border-radius:8px}
 #preview-inner input[type=checkbox]{margin-right:6px}
+#preview-inner .math{font-family:Georgia,'Times New Roman',serif;white-space:nowrap}
+#preview-inner .math-display{display:block;text-align:center;margin:.7em 0;font-size:1.12em;font-family:Georgia,'Times New Roman',serif;white-space:normal}
+#preview-inner .math-frac{display:inline-block;vertical-align:middle;text-align:center;margin:0 .1em}
+#preview-inner .math-frac .math-num{display:block;border-bottom:1px solid currentColor;padding:0 .25em}
+#preview-inner .math-frac .math-den{display:block;padding:0 .25em}
+#preview-inner .math-sqrt{white-space:nowrap}
+#preview-inner .math-text{font-family:inherit}
+#preview-inner .math-bold{font-weight:700}
+#preview-inner .math-overline{text-decoration:overline}
+#preview-inner .math-underline{text-decoration:underline}
+#preview-inner .mermaid{background:#fff;color:#111;border:1px solid var(--border);border-radius:8px;padding:12px;margin:.7em 0;overflow-x:auto;text-align:center}
+#preview-inner .mermaid svg{max-width:100%}
+#preview-inner .mermaid-note{font-size:.8em;color:var(--muted);text-align:center;margin:.2em 0 .7em}
+#preview-inner .mermaid-error{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:.7em 0;background:var(--surface)}
+#preview-inner .mermaid-error .mermaid-error-msg{color:#b3261e;font-size:.85em;margin-bottom:6px}
 
 /* ============ STATUS BAR ============ */
 #statusbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;height:28px;background:var(--surface);border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);flex-shrink:0;user-select:none;overflow:hidden}
@@ -493,7 +508,7 @@ body.zen #zen-exit{display:flex}
 const $=id=>document.getElementById(id);
 const ta=$('input'), hlPre=$('hl'), hlCode=$('hl-code'), pane=$('editor-pane');
 const LS='novapad.v2';
-const APP_VERSION='2.1.0';
+const APP_VERSION='2.2.0';
 const IS_MAC=/Mac|iP(hone|ad|od)/.test(navigator.platform);
 const MOD=IS_MAC?'\u2318':'Ctrl';
 
@@ -1023,7 +1038,7 @@ function download(name,content,type){
 function exportHTML(){
   const t=tab();
   const body=(t.lang==='markdown'||t.lang==='text')?renderMD(t.content):'<pre style="white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(t.content)+'</pre>';
-  const doc='<!DOCTYPE html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(t.name)+'</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.65;color:#2C2C2B;max-width:760px;margin:40px auto;padding:0 20px}code{background:#F0EFED;padding:2px 5px;border-radius:4px;font-size:.9em}pre{background:#F9F8F7;border:1px solid #E6E5E3;border-radius:8px;padding:14px;overflow-x:auto}pre code{background:none;padding:0}blockquote{border-left:3px solid #D8D6D3;margin:0;padding:2px 0 2px 14px;color:#7D7A75}table{border-collapse:collapse}th,td{border:1px solid #E6E5E3;padding:6px 10px}img{max-width:100%}</style></head><body>'+body+'</body></html>';
+  const doc='<!DOCTYPE html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(t.name)+'</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.65;color:#2C2C2B;max-width:760px;margin:40px auto;padding:0 20px}code{background:#F0EFED;padding:2px 5px;border-radius:4px;font-size:.9em}pre{background:#F9F8F7;border:1px solid #E6E5E3;border-radius:8px;padding:14px;overflow-x:auto}pre code{background:none;padding:0}blockquote{border-left:3px solid #D8D6D3;margin:0;padding:2px 0 2px 14px;color:#7D7A75}table{border-collapse:collapse}th,td{border:1px solid #E6E5E3;padding:6px 10px}img{max-width:100%}.math{font-family:Georgia,Times New Roman,serif;white-space:nowrap}.math-display{display:block;text-align:center;margin:.7em 0;font-size:1.12em;font-family:Georgia,Times New Roman,serif;white-space:normal}.math-frac{display:inline-block;vertical-align:middle;text-align:center;margin:0 .1em}.math-frac .math-num{display:block;border-bottom:1px solid currentColor;padding:0 .25em}.math-frac .math-den{display:block;padding:0 .25em}.math-overline{text-decoration:overline}.math-underline{text-decoration:underline}.mermaid{background:#fff;color:#111;border:1px solid #E6E5E3;border-radius:8px;padding:12px;margin:.7em 0;overflow-x:auto;text-align:center}.mermaid svg{max-width:100%}</style></head><body>'+body+(body.includes('class="mermaid"')?'<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><\/script><script>mermaid.initialize({securityLevel:"strict",startOnLoad:false});mermaid.run({querySelector:".mermaid"});<\/script>':'')+'</body></html>';
   download(t.name.replace(/\.[\w]+$/,'')+'.html',doc,'text/html');
   toast('Exported HTML','ok');
 }
@@ -1032,16 +1047,200 @@ function printDoc(){$('print-src').textContent=ta.value;window.print()}
 <script>
 "use strict";
 /* ============ MARKDOWN PREVIEW ============ */
+/* LaTeX math (offline, no CDN): converts $...$, $$...$$, \(...\), \[...\]
+   to safe HTML. Input must already be HTML-escaped; this function only
+   emits <span>/<sup>/<sub>/<br> with fixed classes, never user tags.
+   Unknown commands degrade to their plain name so no content is lost. */
+const LATEX_SYMBOLS={
+alpha:'\u03B1',beta:'\u03B2',gamma:'\u03B3',delta:'\u03B4',epsilon:'\u03B5',varepsilon:'\u03F5',zeta:'\u03B6',eta:'\u03B7',theta:'\u03B8',vartheta:'\u03D1',iota:'\u03B9',kappa:'\u03BA',lambda:'\u03BB',mu:'\u03BC',nu:'\u03BD',xi:'\u03BE',pi:'\u03C0',rho:'\u03C1',sigma:'\u03C3',varsigma:'\u03C2',tau:'\u03C4',upsilon:'\u03C5',phi:'\u03C6',varphi:'\u03D5',chi:'\u03C7',psi:'\u03C8',omega:'\u03C9',
+Gamma:'\u0393',Delta:'\u0394',Theta:'\u0398',Lambda:'\u039B',Xi:'\u039E',Pi:'\u03A0',Sigma:'\u03A3',Upsilon:'\u03A5',Phi:'\u03A6',Psi:'\u03A8',Omega:'\u03A9',
+times:'\u00D7',div:'\u00F7',cdot:'\u00B7',pm:'\u00B1',mp:'\u2213',leq:'\u2264',le:'\u2264',geq:'\u2265',ge:'\u2265',neq:'\u2260',ne:'\u2260',approx:'\u2248',equiv:'\u2261',propto:'\u221D',sim:'~',simeq:'\u2243',cong:'\u2245',ll:'\u226A',gg:'\u226B',in:'\u2208',notin:'\u2209',ni:'\u220B',subset:'\u2282',supset:'\u2283',subseteq:'\u2286',supseteq:'\u2287',cap:'\u2229',cup:'\u222A',sum:'\u03A3',prod:'\u03A0',int:'\u222B',oint:'\u222E',partial:'\u2202',nabla:'\u2207',infty:'\u221E',circ:'\u2218',prime:'\u2032',ldots:'\u2026',cdots:'\u22EF',vdots:'\u22EE',ddots:'\u22F1',hbar:'\u210F',ell:'\u2113',angle:'\u2220',perp:'\u22A5',parallel:'\u2225',forall:'\u2200',exists:'\u2203',emptyset:'\u2205',varnothing:'\u2205',
+rightarrow:'\u2192',leftarrow:'\u2190',Rightarrow:'\u21D2',Leftarrow:'\u21D0',leftrightarrow:'\u2194',Leftrightarrow:'\u21D4',uparrow:'\u2191',downarrow:'\u2193',Uparrow:'\u21D1',Downarrow:'\u21D3',mapsto:'\u21A6',longrightarrow:'\u27F6',longleftarrow:'\u27F5',Longrightarrow:'\u27F9',to:'\u2192',gets:'\u2190',implies:'\u21D2',iff:'\u21D4',
+langle:'\u27E8',rangle:'\u27E9',lfloor:'\u230A',rfloor:'\u230B',lceil:'\u2308',rceil:'\u2309',lbrace:'{',rbrace:'}',vert:'|',Vert:'\u2016',mid:'\u2223',nmid:'\u2224',aleph:'\u2135',Re:'\u211C',Im:'\u2111',wp:'\u2118',dagger:'\u2020',ddagger:'\u2021',bullet:'\u2022',star:'\u22C6',checkmark:'\u2713',degree:'\u00B0',percent:'%',dollar:'$',amp:'&amp;',hash:'#',underscore:'_',backslash:'\\'
+};
+const LATEX_OPERATORS=new Set(['sin','cos','tan','arcsin','arccos','arctan','sinh','cosh','tanh','log','ln','lim','min','max','sup','inf','exp','det','dim','ker','deg','arg','gcd','Pr']);
+const LATEX_NOOP=new Set(['displaystyle','textstyle','scriptstyle','scriptscriptstyle','limits','nolimits','big','Big','bigg','Bigg','bigl','bigr','Bigl','Bigr','biggl','biggr','Biggl','Biggr','hline','newline']);
+function latexToHTML(tex,display){
+  let i=0;const n=tex.length;
+  function skipSpaces(){while(i<n&&tex[i]===' ')i++}
+  function parseGroupRaw(){
+    skipSpaces();if(tex[i]!=='{')return null;
+    i++;let depth=1;const start=i;
+    while(i<n&&depth>0){
+      if(tex[i]==='\\'&&i+1<n){i+=2;continue}
+      if(tex[i]==='{')depth++;else if(tex[i]==='}'){depth--;if(depth===0){const raw=tex.slice(start,i);i++;return raw}}
+      i++;
+    }
+    return tex.slice(start);
+  }
+  function parseArg(){
+    skipSpaces();
+    if(tex[i]==='{'){i++;return parse(true)}
+    return parseToken();
+  }
+  function parseToken(){
+    skipSpaces();if(i>=n)return '';
+    const ch=tex[i];
+    if(ch==='{'){i++;return parse(true)}
+    if(ch==='\\'){
+      i++;if(i>=n)return '\\';
+      const c=tex[i];
+      if(c==='&'){const m=/^&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/.exec(tex.slice(i));if(m){i+=m[0].length;return m[0]}i++;return '&amp;'}
+      if(/[a-zA-Z]/.test(c)){let j=i;while(j<n&&/[a-zA-Z]/.test(tex[j]))j++;const cmd=tex.slice(i,j);i=j;return handleCmd(cmd)}
+      i++;return handleSingle(c);
+    }
+    if(ch==='^'||ch==='_'){
+      const tag=ch==='^'?'sup':'sub';i++;
+      return '<'+tag+'>'+parseArg()+'</'+tag+'>';
+    }
+    if(ch==='&'){const m=/^&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/.exec(tex.slice(i));if(m){i+=m[0].length;return m[0]}i++;return '&amp;'}
+    i++;return ch;
+  }
+  function handleSingle(c){
+    switch(c){
+      case '%':return '%';case '$':return '$';case '&':return '&amp;';case '#':return '#';
+      case '_':return '_';case '{':return '{';case '}':return '}';case '<':return '&lt;';case '>':return '&gt;';
+      case '/':return '/';case ' ':return ' ';case ',':return ' ';case ';':return ' ';case ':':return ' ';
+      case '!':return '';case '\\':return display?'<br>':' ';case '~':return '&nbsp;';case "'":return '\u2032';
+      case '|':return '|';case '.':return '';default:return c;
+    }
+  }
+  function handleCmd(cmd){
+    if(Object.prototype.hasOwnProperty.call(LATEX_SYMBOLS,cmd))return LATEX_SYMBOLS[cmd];
+    if(LATEX_OPERATORS.has(cmd))return cmd;
+    if(LATEX_NOOP.has(cmd))return '';
+    if(cmd==='left'||cmd==='right'){
+      skipSpaces();
+      if(tex[i]==='.'){i++;return ''}
+      if(tex[i]==='\\'){
+        const save=i;i++;
+        if(i<n&&/[a-zA-Z]/.test(tex[i])){let j=i;while(j<n&&/[a-zA-Z]/.test(tex[j]))j++;const d=tex.slice(i,j);i=j;return Object.prototype.hasOwnProperty.call(LATEX_SYMBOLS,d)?LATEX_SYMBOLS[d]:''}
+        i=save;
+      }
+      if(i<n){const d=tex[i];i++;return d==='{'?'{':d==='}'?'}':d}
+      return '';
+    }
+    if(cmd==='text'){
+      const raw=parseGroupRaw();return raw===null?'':raw;
+    }
+    if(cmd==='mathrm'||cmd==='mathit'||cmd==='mathsf'||cmd==='mathtt'||cmd==='mathbb'||cmd==='mathcal'||cmd==='mathfrak')return parseArg();
+    if(cmd==='textbf'||cmd==='mathbf'||cmd==='boldsymbol')return '<span class="math-bold">'+parseArg()+'</span>';
+    if(cmd==='textit'||cmd==='emph')return '<em>'+parseArg()+'</em>';
+    if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'){
+      const num=parseArg();const den=parseArg();
+      return '<span class="math-frac"><span class="math-num">'+num+'</span><span class="math-den">'+den+'</span></span>';
+    }
+    if(cmd==='sqrt'){
+      skipSpaces();let root='';
+      if(tex[i]==='['){const close=tex.indexOf(']',i);if(close>=0){root=latexToHTML(tex.slice(i+1,close),display);i=close+1}}
+      const body=parseArg();
+      return '<span class="math-sqrt">'+(root?'<sup>'+root+'</sup>':'')+'\u221A<span>'+body+'</span></span>';
+    }
+    if(cmd==='hat'||cmd==='widehat')return parseArg()+'&#x0302;';
+    if(cmd==='bar')return parseArg()+'&#x0304;';
+    if(cmd==='vec')return parseArg()+'&#x20D7;';
+    if(cmd==='dot')return parseArg()+'&#x0307;';
+    if(cmd==='ddot')return parseArg()+'&#x0308;';
+    if(cmd==='tilde'||cmd==='widetilde')return parseArg()+'&#x0303;';
+    if(cmd==='overline')return '<span class="math-overline">'+parseArg()+'</span>';
+    if(cmd==='underline')return '<span class="math-underline">'+parseArg()+'</span>';
+    if(cmd==='color'||cmd==='textcolor'){parseGroupRaw();return parseArg()}
+    if(cmd==='begin'){
+      const env=parseGroupRaw();if(!env)return '';
+      const endTag='\\end{'+env+'}';const endIdx=tex.indexOf(endTag,i);
+      if(endIdx<0)return '';
+      const inner=tex.slice(i,endIdx);i=endIdx+endTag.length;
+      const rows=inner.split(/\\\\/);
+      const renderedRows=rows.map(row=>row.split('&amp;').map(cell=>latexToHTML(cell.trim(),display)).join('&nbsp;&nbsp;')).join('<br>');
+      let open='',close='';
+      if(env==='pmatrix'){open='(';close=')'}
+      else if(env==='bmatrix'){open='[';close=']'}
+      else if(env==='vmatrix'){open='|';close='|'}
+      else if(env==='cases'){open='{';close=''}
+      return open+renderedRows+close;
+    }
+    if(cmd==='end')return '';
+    if(cmd==='over')return ' / ';
+    if(cmd==='choose')return ' / ';
+    if(cmd==='quad'||cmd==='qquad')return '&nbsp;&nbsp;';
+    if(cmd==='space')return ' ';
+    return cmd;
+  }
+  function parse(stopBrace){
+    let out='';
+    while(i<n){
+      const ch=tex[i];
+      if(ch==='}'){if(stopBrace){i++;break}out+='}';i++;continue}
+      if(ch==='{'){i++;out+=parse(true);continue}
+      if(ch==='\\'){
+        i++;if(i>=n){out+='\\';break}
+        const c=tex[i];
+        if(c==='&'){const m=/^&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/.exec(tex.slice(i));if(m){i+=m[0].length;out+=m[0];continue}i++;out+='&amp;';continue}
+        if(/[a-zA-Z]/.test(c)){let j=i;while(j<n&&/[a-zA-Z]/.test(tex[j]))j++;const cmd=tex.slice(i,j);i=j;out+=handleCmd(cmd);continue}
+        i++;out+=handleSingle(c);continue;
+      }
+      if(ch==='^'||ch==='_'){
+        const tag=ch==='^'?'sup':'sub';i++;out+='<'+tag+'>'+parseArg()+'</'+tag+'>';continue;
+      }
+      if(ch==='&'){const m=/^&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/.exec(tex.slice(i));if(m){i+=m[0].length;out+=m[0];continue}out+='&amp;';i++;continue}
+      out+=ch;i++;
+    }
+    return out;
+  }
+  return parse(false);
+}
+function mdMathHTML(s,mathStore){
+  let out='';let i=0;const n=s.length;
+  while(i<n){
+    if(s[i]==='\\'&&i+1<n&&(s[i+1]==='\\')){
+      if(s[i+2]==='\\'){out+='\\';i+=3;continue}
+    }
+    if(s[i]==='\\'&&i+1<n&&(s[i+1]==='('||s[i+1]==='[')){
+      const closing=s[i+1]==='('?'\\)':'\\]';const end=s.indexOf(closing,i+2);
+      if(end>=0){const tex=s.slice(i+2,end);const disp=s[i+1]==='[';
+        mathStore.push('<span class="'+(disp?'math math-display':'math')+'">'+latexToHTML(tex,disp)+'</span>');
+        out+='\x01'+(mathStore.length-1)+'\x01';i=end+2;continue}
+    }
+    if(s[i]==='\\'&&i+1<n&&s[i+1]==='$'){out+='$';i+=2;continue}
+    if(s[i]==='$'){
+      if(s[i+1]==='$'){
+        const end=s.indexOf('$$',i+2);
+        if(end>=0){
+          const tex=s.slice(i+2,end);
+          if(tex&&tex[0]!==' '&&tex[tex.length-1]!==' '&&tex.indexOf('$$')<0){
+            mathStore.push('<span class="math math-display">'+latexToHTML(tex,true)+'</span>');
+            out+='\x01'+(mathStore.length-1)+'\x01';i=end+2;continue;
+          }
+        }
+        out+='$$';i+=2;continue;
+      }
+      const end=s.indexOf('$',i+1);
+      if(end>i+1){
+        const tex=s.slice(i+1,end);
+        if(tex[0]!==' '&&tex[tex.length-1]!==' '&&tex.indexOf('$')<0){
+          mathStore.push('<span class="math">'+latexToHTML(tex,false)+'</span>');
+          out+='\x01'+(mathStore.length-1)+'\x01';i=end+1;continue;
+        }
+      }
+      out+='$';i++;continue;
+    }
+    out+=s[i];i++;
+  }
+  return out;
+}
 function mdInlineHTML(s){
   const codes=[];
   s=esc(s);
   s=s.replace(/`([^`]+)`/g,(_,c)=>{codes.push(c);return '\x00'+(codes.length-1)+'\x00'});
+  const maths=[];
+  s=mdMathHTML(s,maths);
   s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,(_,alt,src)=>/^(https?:|data:image)/.test(src)?'<img src="'+attrEsc(src)+'" alt="'+attrEsc(alt)+'">':attrEsc(alt));
   s=s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g,(_,txt,href)=>/^(https?:|mailto:|#)/.test(href)?'<a href="'+attrEsc(href)+'" target="_blank" rel="noopener">'+txt+'</a>':txt);
   s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/__([^_]+)__/g,'<strong>$1</strong>');
   s=s.replace(/(^|\W)\*([^*\s][^*]*)\*/g,'$1<em>$2</em>').replace(/(^|\W)_([^_\s][^_]*)_/g,'$1<em>$2</em>');
   s=s.replace(/~~([^~]+)~~/g,'<del>$1</del>');
   s=s.replace(/\x00(\d+)\x00/g,(_,i)=>'<code>'+codes[+i]+'</code>');
+  s=s.replace(/\x01(\d+)\x01/g,(_,i)=>maths[+i]);
   return s;
 }
 function renderMD(src){
@@ -1050,9 +1249,11 @@ function renderMD(src){
   const flush=()=>{if(para.length){out.push('<p>'+para.map(mdInlineHTML).join(' ')+'</p>');para=[]}};
   while(i<lines.length){
     const L=lines[i];
-    if(/^\s*(```|~~~)/.test(L)){flush();const buf=[];i++;
+    if(/^\s*(```|~~~)/.test(L)){flush();const fence=/^\s*(```|~~~)\s*(\S*)/.exec(L);const lang=(fence&&fence[2]||'').toLowerCase();const buf=[];i++;
       while(i<lines.length&&!/^\s*(```|~~~)/.test(lines[i]))buf.push(lines[i++]);
-      i++;out.push('<pre><code>'+esc(buf.join('\n'))+'</code></pre>');continue}
+      i++;
+      if(lang==='mermaid'){out.push('<div class="mermaid">'+esc(buf.join('\n'))+'</div>')}
+      else out.push('<pre><code>'+esc(buf.join('\n'))+'</code></pre>');continue}
     const h=/^(#{1,6})\s+(.*)$/.exec(L);
     if(h){flush();out.push('<h'+h[1].length+'>'+mdInlineHTML(h[2].replace(/\s#+\s*$/,''))+'</h'+h[1].length+'>');i++;continue}
     if(/^ {0,3}(-{3,}|\*{3,}|_{3,})\s*$/.test(L)){flush();out.push('<hr>');i++;continue}
@@ -1078,10 +1279,61 @@ function renderMD(src){
   flush();return out.join('\n');
 }
 let previewRaf=0;
+let mermaidPromise=null;
+function ensureMermaid(){
+  if(window.mermaid)return Promise.resolve(window.mermaid);
+  if(mermaidPromise)return mermaidPromise;
+  mermaidPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    script.onload=()=>{try{window.mermaid.initialize({securityLevel:'strict',startOnLoad:false,theme:'default'});resolve(window.mermaid)}catch(e){reject(e)}};
+    script.onerror=()=>reject(new Error('Mermaid CDN load failed'));
+    setTimeout(()=>reject(new Error('Mermaid load timeout')),10000);
+    document.head.appendChild(script);
+  });
+  mermaidPromise.catch(()=>{mermaidPromise=null});
+  return mermaidPromise;
+}
+let mermaidTimer=0,mermaidSeq=0;
+function scheduleMermaid(){
+  clearTimeout(mermaidTimer);
+  const seq=++mermaidSeq;
+  mermaidTimer=setTimeout(()=>{renderMermaidDiagrams(seq)},300);
+}
+async function renderMermaidDiagrams(seq){
+  const host=$('preview-inner');if(!host)return;
+  const nodes=[...host.querySelectorAll('.mermaid:not([data-processed])')];
+  if(!nodes.length)return;
+  let m;
+  try{m=await ensureMermaid()}catch(e){
+    if(seq!==mermaidSeq)return;
+    nodes.forEach(node=>{
+      const src=node.textContent;
+      const pre=document.createElement('pre');
+      const code=document.createElement('code');code.textContent=src;pre.appendChild(code);
+      const note=document.createElement('div');note.className='mermaid-note';note.textContent='Mermaid diagram (library could not load \u2014 showing source; check internet connection)';
+      node.replaceWith(pre,note);
+    });
+    return;
+  }
+  if(seq!==mermaidSeq)return;
+  for(const node of nodes){
+    if(seq!==mermaidSeq)return;
+    try{await m.run({nodes:[node]})}
+    catch(e){
+      const src=node.textContent;
+      const wrap=document.createElement('div');wrap.className='mermaid-error';
+      const msg=document.createElement('div');msg.className='mermaid-error-msg';msg.textContent='Mermaid syntax error: '+(e&&e.message?String(e.message).slice(0,200):'could not render diagram');
+      const pre=document.createElement('pre');const code=document.createElement('code');code.textContent=src;pre.appendChild(code);
+      wrap.append(msg,pre);
+      node.replaceWith(wrap);
+    }
+  }
+}
 function updatePreview(){
   if(!document.body.classList.contains('preview-on'))return;
   if(previewRaf)return;
-  previewRaf=requestAnimationFrame(()=>{previewRaf=0;$('preview-inner').innerHTML=renderMD(ta.value)});
+  previewRaf=requestAnimationFrame(()=>{previewRaf=0;$('preview-inner').innerHTML=renderMD(ta.value);scheduleMermaid()});
 }
 function togglePreview(){
   document.body.classList.toggle('preview-on');
@@ -1478,6 +1730,8 @@ const WELCOME=[
 '- **Command palette** \u2014 press `Ctrl+K` and type what you want',
 '- **Syntax highlighting** for Markdown, JavaScript, Python, HTML, CSS, JSON, SQL & more',
 '- **Live Markdown preview** \u2014 press `Ctrl+Shift+M` right now to see this page rendered',
+'- **LaTeX math** \u2014 `$x^2$`, `$$...$$`, `\\(...\\)` render in the preview, offline, no plugins',
+'- **Live Mermaid diagrams** \u2014 fenced ```mermaid blocks render as diagrams (needs internet for the Mermaid library)',
 '- **Find & replace** with match case, whole word and regex modes',
 '- **Text tools** \u2014 sort & dedupe lines, change case, format JSON, Base64, URL encode\u2026',
 '- **Zen mode** (`F10`), 4 themes, word wrap, adjustable fonts',
