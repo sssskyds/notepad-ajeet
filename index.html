@@ -508,7 +508,7 @@ body.zen #zen-exit{display:flex}
 const $=id=>document.getElementById(id);
 const ta=$('input'), hlPre=$('hl'), hlCode=$('hl-code'), pane=$('editor-pane');
 const LS='novapad.v2';
-const APP_VERSION='2.2.0';
+const APP_VERSION='2.2.1';
 const IS_MAC=/Mac|iP(hone|ad|od)/.test(navigator.platform);
 const MOD=IS_MAC?'\u2318':'Ctrl';
 
@@ -1234,6 +1234,7 @@ function mdInlineHTML(s){
   s=s.replace(/`([^`]+)`/g,(_,c)=>{codes.push(c);return '\x00'+(codes.length-1)+'\x00'});
   const maths=[];
   s=mdMathHTML(s,maths);
+  s=s.replace(/&lt;br\s*\/?&gt;/gi,'<br>');
   s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,(_,alt,src)=>/^(https?:|data:image)/.test(src)?'<img src="'+attrEsc(src)+'" alt="'+attrEsc(alt)+'">':attrEsc(alt));
   s=s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g,(_,txt,href)=>/^(https?:|mailto:|#)/.test(href)?'<a href="'+attrEsc(href)+'" target="_blank" rel="noopener">'+txt+'</a>':txt);
   s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/__([^_]+)__/g,'<strong>$1</strong>');
